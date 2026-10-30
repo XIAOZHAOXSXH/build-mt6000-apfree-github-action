@@ -71,11 +71,21 @@
 
 ## 4. 如果构建失败，先看这几处
 
-- `Build packages only` 步只跑十几秒就挂：大概率是包目标路径错了。
-  feed 里的包目标必须是 `package/feeds/packages/<包名>/compile`，
-  直接写 `package/<包名>/compile` 会在几秒内报 No rule to make target。
+- `Build packages only` 步只跑十几秒就挂：本地已复现的根因是
+  **单包编译不会自动先编工具链**。直接跑包编译时，
+  `package/libs/toolchain` 会去拷
+  `staging_dir/toolchain-.../lib/ld-musl-*.so*`，而工具链没建起来、
+  那个目录是空的，于是几十秒内以退出码 2 挂掉，根本没到 apfree
+  源码那一步。本包已在包编译前加了
+  `make tools/install toolchain/install` 一步，这一步在 runner 上
+  会比较久（编 gcc/musl 工具链），不要删。
+- 包目标路径：feed 里的包目标必须是
+  `package/feeds/packages/<包名>/compile`，直接写
+  `package/<包名>/compile` 会报 No rule to make target。
   本包已按此修正；自己放进 `package/` 的 LuCI 包则保持
   `package/luci-app-apfree-wifidog/compile`。
+- 配置里必须开 `CONFIG_TARGET_MULTI_PROFILE=y`，否则单设备模式下
+  gl-mt6000 的设备选择会被 `make defconfig` 丢掉。
 - `Load package configuration` 步：两个主包有没有被 `make defconfig`
   选中（日志里 grep 的结果）。没选中就说明 feed / luci 包路径变了。
 - `Update feeds` 步打出的 apfree 版本与 DEPENDS：确认是不是

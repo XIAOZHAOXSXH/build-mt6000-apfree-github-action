@@ -91,16 +91,29 @@ jobs:
           grep -q "^CONFIG_PACKAGE_apfree-wifidog=y" .config
           grep -q "^CONFIG_PACKAGE_luci-app-apfree-wifidog=y" .config
 
+      - name: Build tools and toolchain
+        run: |
+          cd openwrt
+          # 根因修正（本地已复现，前两次 Action 12 秒 / 25 秒就挂的原因）：
+          # 单包编译不会自动先编工具链。直接跑 package/.../compile 时，
+          # package/libs/toolchain 会去拷 staging_dir/toolchain-.../lib/ld-musl-*.so*，
+          # 而工具链根本没建起来、那个目录是空的，于是几十秒内以退出码 2 挂掉，
+          # 根本没到 apfree 源码那一步。必须先把 tools + toolchain 建好，
+          # 再编包。这一步在 runner 上会比较久（编 gcc/musl 工具链），
+          # 是必要的，不是可选项；不要为了省时间把它删掉。
+          make -j$(nproc) tools/install toolchain/install V=s \
+            || make -j1 tools/install toolchain/install V=s
+          ls staging_dir/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl/lib/ld-musl-*.so*
+
       - name: Build packages only
         run: |
           cd openwrt
           # 只编译这两个包及其依赖，不跑全量 make（全量会产固件镜像，
           # 耗时数小时且不是本次目标）。依赖库会随编译一并产出 ipk。
-          # 关键修正（第一次构建 12 秒就挂的原因）：
-          # feed 里的包在 feeds install 后落到 package/feeds/<feed>/<包名>，
-          # 所以 apfree 的正确目标是 package/feeds/packages/apfree-wifidog/compile，
-          # 而不是 package/apfree-wifidog/compile（后者目录根本不存在，
-          # make 会在几秒内报 No rule to make target 而不是真正编译）。
+          # 包目标路径：feed 里的包在 feeds install 后落到
+          # package/feeds/<feed>/<包名>，所以 apfree 的正确目标是
+          # package/feeds/packages/apfree-wifidog/compile，
+          # 而不是 package/apfree-wifidog/compile。
           # LuCI 包是我们自己放进 package/ 的，所以它的目标保持
           # package/luci-app-apfree-wifidog/compile 不变。
           ls -ld package/feeds/packages/apfree-wifidog package/luci-app-apfree-wifidog
