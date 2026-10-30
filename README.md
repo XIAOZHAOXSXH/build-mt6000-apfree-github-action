@@ -71,6 +71,11 @@
 
 ## 4. 如果构建失败，先看这几处
 
+- `Build packages only` 步只跑十几秒就挂：大概率是包目标路径错了。
+  feed 里的包目标必须是 `package/feeds/packages/<包名>/compile`，
+  直接写 `package/<包名>/compile` 会在几秒内报 No rule to make target。
+  本包已按此修正；自己放进 `package/` 的 LuCI 包则保持
+  `package/luci-app-apfree-wifidog/compile`。
 - `Load package configuration` 步：两个主包有没有被 `make defconfig`
   选中（日志里 grep 的结果）。没选中就说明 feed / luci 包路径变了。
 - `Update feeds` 步打出的 apfree 版本与 DEPENDS：确认是不是

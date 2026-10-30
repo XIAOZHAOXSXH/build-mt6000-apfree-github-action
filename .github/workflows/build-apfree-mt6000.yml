@@ -96,8 +96,16 @@ jobs:
           cd openwrt
           # 只编译这两个包及其依赖，不跑全量 make（全量会产固件镜像，
           # 耗时数小时且不是本次目标）。依赖库会随编译一并产出 ipk。
-          make -j$(nproc) package/apfree-wifidog/compile package/luci-app-apfree-wifidog/compile V=s \
-            || make -j1 package/apfree-wifidog/compile package/luci-app-apfree-wifidog/compile V=s
+          # 关键修正（第一次构建 12 秒就挂的原因）：
+          # feed 里的包在 feeds install 后落到 package/feeds/<feed>/<包名>，
+          # 所以 apfree 的正确目标是 package/feeds/packages/apfree-wifidog/compile，
+          # 而不是 package/apfree-wifidog/compile（后者目录根本不存在，
+          # make 会在几秒内报 No rule to make target 而不是真正编译）。
+          # LuCI 包是我们自己放进 package/ 的，所以它的目标保持
+          # package/luci-app-apfree-wifidog/compile 不变。
+          ls -ld package/feeds/packages/apfree-wifidog package/luci-app-apfree-wifidog
+          make -j$(nproc) package/feeds/packages/apfree-wifidog/compile package/luci-app-apfree-wifidog/compile V=s \
+            || make -j1 package/feeds/packages/apfree-wifidog/compile package/luci-app-apfree-wifidog/compile V=s
           ls -lh bin/packages/aarch64_cortex-a53/*/apfree-wifidog*.ipk \
                  bin/packages/aarch64_cortex-a53/*/luci-app-apfree-wifidog*.ipk
 
