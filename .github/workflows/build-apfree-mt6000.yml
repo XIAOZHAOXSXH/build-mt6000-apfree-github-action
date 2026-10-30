@@ -105,6 +105,23 @@ jobs:
             || make -j1 tools/install toolchain/install V=s
           ls staging_dir/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl/lib/ld-musl-*.so*
 
+      - name: Build target kernel
+        run: |
+          cd openwrt
+          # 根因修正（第三次构建日志已证实，前两次的工具链修正之后的新失败）：
+          # apfree 的依赖里有 ipset、cryptodev-linux、kmod-ipt-* 这些
+          # 需要内核源码的包。只编 tools + toolchain 时，内核源码目录
+          # build_dir/.../linux-5.4.284 根本没准备好、里面没有 .config，
+          # 于是 ipset 的 configure 找不到内核源码、退到宿主机的
+          # /lib/modules/6.8.0-1070-azure/source 而报错
+          # "Invalid kernel source directory"，
+          # cryptodev-linux 则直接报 "No rule to make target '.../linux-5.4.284/.config'"。
+          # 必须先把目标内核编好，再编包。这一步会编内核，耗时较长，
+          # 是必要的，不要删。
+          make -j$(nproc) target/linux/compile V=s \
+            || make -j1 target/linux/compile V=s
+          ls build_dir/target-aarch64_cortex-a53_musl/linux-mediatek_mt7986/linux-5.4.284/.config
+
       - name: Build packages only
         run: |
           cd openwrt

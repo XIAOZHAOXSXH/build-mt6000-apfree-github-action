@@ -79,6 +79,12 @@
   源码那一步。本包已在包编译前加了
   `make tools/install toolchain/install` 一步，这一步在 runner 上
   会比较久（编 gcc/musl 工具链），不要删。
+- 包编译时 ipset 报 `Invalid kernel source directory
+  /lib/modules/.../source`，或 cryptodev-linux 报
+  `No rule to make target '.../linux-5.4.284/.config'`：
+  这是内核没编好。apfree 的依赖（ipset、cryptodev、kmod-ipt-*）
+  需要内核源码，tools + toolchain 之后还必须先跑
+  `make target/linux/compile`，本包已在包编译前加了这一步。
 - 包目标路径：feed 里的包目标必须是
   `package/feeds/packages/<包名>/compile`，直接写
   `package/<包名>/compile` 会报 No rule to make target。
